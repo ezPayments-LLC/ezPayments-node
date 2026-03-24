@@ -1,0 +1,29 @@
+{
+  "name": "ezpayments",
+  "version": "0.1.0",
+  "description": "Node.js SDK for ezPayments Merchant API",
+  "main": "src/index.js",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "license": "MIT",
+  "scripts": {
+    "test": "node --test tests/*.test.js"
+  },
+  "keywords": [
+    "ezpayments",
+    "payments",
+    "payment-links",
+    "api",
+    "sdk"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/elkhayyat/ezpayments-node.git"
+  },
+  "author": "ezPayments",
+  "homepage": "https://github.com/elkhayyat/ezpayments-node#readme",
+  "bugs": {
+    "url": "https://github.com/elkhayyat/ezpayments-node/issues"
+  }
+}
