@@ -2,6 +2,7 @@
 
 const EzPayments = require('./client');
 const Webhook = require('./webhook');
+const PaginatedResponse = require('./pagination');
 const {
   EzPaymentsError,
   AuthenticationError,
@@ -15,6 +16,7 @@ const {
 module.exports = EzPayments;
 module.exports.EzPayments = EzPayments;
 module.exports.Webhook = Webhook;
+module.exports.PaginatedResponse = PaginatedResponse;
 module.exports.EzPaymentsError = EzPaymentsError;
 module.exports.AuthenticationError = AuthenticationError;
 module.exports.ValidationError = ValidationError;

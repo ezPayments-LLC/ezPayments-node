@@ -63,12 +63,12 @@ const { data: link } = await client.paymentLinks.create({
   metadata: { customer_id: 'cust_123' },
 }, { idempotencyKey: 'unique-key' });
 
-// List
-const { data: links } = await client.paymentLinks.list({
-  page: 1,
-  page_size: 20,
+// List (returns a PaginatedResponse)
+const page = await client.paymentLinks.list({
+  limit: 20,
   status: 'active',
 });
+console.log(page.results); // array of payment links
 
 // Retrieve
 const { data: link } = await client.paymentLinks.retrieve('pl_abc123');
@@ -89,10 +89,8 @@ const { data: fees } = await client.paymentLinks.getFees('pl_abc123');
 
 ```js
 // List
-const { data: transactions } = await client.transactions.list({
-  page: 1,
-  page_size: 20,
-});
+const page = await client.transactions.list({ limit: 20 });
+console.log(page.results);
 
 // Retrieve
 const { data: txn } = await client.transactions.retrieve('txn_abc123');
@@ -108,7 +106,8 @@ const { data: endpoint } = await client.webhookEndpoints.create({
 });
 
 // List
-const { data: endpoints } = await client.webhookEndpoints.list();
+const page = await client.webhookEndpoints.list({ limit: 10 });
+console.log(page.results);
 
 // Retrieve
 const { data: endpoint } = await client.webhookEndpoints.retrieve('we_abc123');
@@ -131,10 +130,69 @@ const { data: key } = await client.apiKeys.create({ name: 'Production' });
 console.log(key.secret); // Save this -- it won't be shown again
 
 // List
-const { data: keys } = await client.apiKeys.list();
+const page = await client.apiKeys.list();
+console.log(page.results);
 
 // Delete (revoke)
 await client.apiKeys.del('key_abc123');
+```
+
+---
+
+## Pagination
+
+All list endpoints use cursor-based pagination and return a `PaginatedResponse` object.
+
+### Parameters
+
+| Parameter       | Type     | Default | Description                           |
+| --------------- | -------- | ------- | ------------------------------------- |
+| `limit`         | `number` | `20`    | Items per page (1-100)                |
+| `startingAfter` | `string` | --      | Cursor ID for the next page           |
+
+### PaginatedResponse
+
+| Property      | Type       | Description                            |
+| ------------- | ---------- | -------------------------------------- |
+| `results`     | `Array`    | Array of resource objects              |
+| `hasMore`     | `boolean`  | Whether more pages exist               |
+| `nextUrl`     | `string`   | Full URL for the next page (or null)   |
+| `previousUrl` | `string`   | Full URL for the previous page (or null) |
+| `meta`        | `object`   | Response metadata (request_id, mode)   |
+
+### Fetching the next page
+
+```js
+let page = await client.paymentLinks.list({ limit: 10 });
+
+while (page.hasMore) {
+  page = await page.nextPage();
+  console.log(page.results);
+}
+```
+
+### Collecting all items
+
+```js
+const allLinks = [];
+let page = await client.paymentLinks.list({ limit: 100 });
+
+allLinks.push(...page.results);
+while (page.hasMore) {
+  page = await page.nextPage();
+  allLinks.push(...page.results);
+}
+```
+
+### Iterating over a single page
+
+`PaginatedResponse` implements `Symbol.iterator`, so you can use `for...of`:
+
+```js
+const page = await client.transactions.list({ limit: 50 });
+for (const txn of page) {
+  console.log(txn.id, txn.amount);
+}
 ```
 
 ---

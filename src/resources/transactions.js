@@ -1,5 +1,7 @@
 'use strict';
 
+const PaginatedResponse = require('../pagination');
+
 /**
  * Resource for viewing transactions.
  *
@@ -16,22 +18,31 @@ class Transactions {
   }
 
   /**
-   * Lists all transactions with optional filtering and pagination.
+   * Lists transactions with cursor-based pagination and optional filtering.
    *
    * @param {object} [params] - Query parameters
-   * @param {number} [params.page] - Page number
-   * @param {number} [params.page_size] - Number of items per page
+   * @param {number} [params.limit] - Number of items per page (1-100, default 20)
+   * @param {string} [params.startingAfter] - Cursor for fetching the next page
    * @param {string} [params.status] - Filter by status
    * @param {string} [params.ordering] - Field to order results by
    * @param {string} [params.created_after] - Filter transactions created after this ISO date
    * @param {string} [params.created_before] - Filter transactions created before this ISO date
-   * @returns {Promise<object>} Paginated list of transactions
+   * @returns {Promise<PaginatedResponse>} Paginated list of transactions
    *
    * @example
-   * const txns = await ezpayments.transactions.list({ page: 1, page_size: 20 });
+   * const page = await client.transactions.list({ limit: 20 });
+   * for (const txn of page) {
+   *   console.log(txn.id);
+   * }
    */
   async list(params = {}) {
-    return this._http.request('GET', this._basePath, { query: params });
+    const { startingAfter, ...rest } = params;
+    const query = { ...rest };
+    if (startingAfter) {
+      query.starting_after = startingAfter;
+    }
+    const response = await this._http.request('GET', this._basePath, { query });
+    return new PaginatedResponse(response.data, response.meta, this._http, this._basePath);
   }
 
   /**

@@ -1,5 +1,7 @@
 'use strict';
 
+const PaginatedResponse = require('../pagination');
+
 /**
  * Resource for managing API keys.
  *
@@ -36,18 +38,25 @@ class ApiKeys {
   }
 
   /**
-   * Lists all API keys. Secrets are not included in list responses.
+   * Lists API keys with cursor-based pagination. Secrets are not included.
    *
    * @param {object} [params] - Query parameters
-   * @param {number} [params.page] - Page number
-   * @param {number} [params.page_size] - Number of items per page
-   * @returns {Promise<object>} Paginated list of API keys
+   * @param {number} [params.limit] - Number of items per page (1-100, default 20)
+   * @param {string} [params.startingAfter] - Cursor for fetching the next page
+   * @returns {Promise<PaginatedResponse>} Paginated list of API keys
    *
    * @example
-   * const keys = await ezpayments.apiKeys.list();
+   * const page = await client.apiKeys.list({ limit: 10 });
+   * console.log(page.results);
    */
   async list(params = {}) {
-    return this._http.request('GET', this._basePath, { query: params });
+    const { startingAfter, ...rest } = params;
+    const query = { ...rest };
+    if (startingAfter) {
+      query.starting_after = startingAfter;
+    }
+    const response = await this._http.request('GET', this._basePath, { query });
+    return new PaginatedResponse(response.data, response.meta, this._http, this._basePath);
   }
 
   /**

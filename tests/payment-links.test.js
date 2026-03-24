@@ -4,6 +4,7 @@ const { describe, it, beforeEach, afterEach, mock } = require('node:test');
 const assert = require('node:assert/strict');
 
 const EzPayments = require('../src/index');
+const PaginatedResponse = require('../src/pagination');
 
 /**
  * Creates a mock fetch function that returns the given response.
@@ -87,30 +88,98 @@ describe('PaymentLinks', () => {
   });
 
   describe('list', () => {
-    it('should list payment links', async () => {
+    it('should return a PaginatedResponse', async () => {
       const responseBody = {
-        data: [
-          { id: 'pl_1', amount: '10.00' },
-          { id: 'pl_2', amount: '20.00' },
-        ],
+        data: {
+          next: 'https://app.ezpayments.co/api/v3/payment-links/?cursor=abc123',
+          previous: null,
+          results: [
+            { id: 'pl_1', amount: '10.00' },
+            { id: 'pl_2', amount: '20.00' },
+          ],
+        },
         meta: { request_id: 'req_002', mode: 'test' },
       };
 
       globalThis.fetch = mockFetch(200, responseBody);
 
-      const result = await client.paymentLinks.list({ page: 1, page_size: 10 });
-      assert.deepStrictEqual(result, responseBody);
+      const page = await client.paymentLinks.list({ limit: 10 });
+
+      assert.ok(page instanceof PaginatedResponse);
+      assert.strictEqual(page.results.length, 2);
+      assert.strictEqual(page.results[0].id, 'pl_1');
+      assert.strictEqual(page.hasMore, true);
+      assert.strictEqual(page.meta.request_id, 'req_002');
 
       const [url, options] = globalThis.fetch.mock.calls[0].arguments;
-      assert.ok(url.includes('page=1'));
-      assert.ok(url.includes('page_size=10'));
+      assert.ok(url.includes('limit=10'));
       assert.strictEqual(options.method, 'GET');
     });
 
+    it('should pass startingAfter as starting_after query param', async () => {
+      const responseBody = {
+        data: { next: null, previous: null, results: [] },
+        meta: { request_id: 'req_003', mode: 'test' },
+      };
+
+      globalThis.fetch = mockFetch(200, responseBody);
+
+      await client.paymentLinks.list({ limit: 5, startingAfter: 'pl_abc' });
+
+      const [url] = globalThis.fetch.mock.calls[0].arguments;
+      assert.ok(url.includes('starting_after=pl_abc'));
+      assert.ok(url.includes('limit=5'));
+      // startingAfter should not appear as a raw param
+      assert.ok(!url.includes('startingAfter='));
+    });
+
     it('should work with no parameters', async () => {
-      globalThis.fetch = mockFetch(200, { data: [], meta: {} });
-      const result = await client.paymentLinks.list();
-      assert.ok(result);
+      globalThis.fetch = mockFetch(200, {
+        data: { next: null, previous: null, results: [] },
+        meta: {},
+      });
+
+      const page = await client.paymentLinks.list();
+      assert.ok(page instanceof PaginatedResponse);
+      assert.strictEqual(page.results.length, 0);
+      assert.strictEqual(page.hasMore, false);
+    });
+
+    it('should be iterable with for...of', async () => {
+      const responseBody = {
+        data: {
+          next: null,
+          previous: null,
+          results: [
+            { id: 'pl_1' },
+            { id: 'pl_2' },
+            { id: 'pl_3' },
+          ],
+        },
+        meta: {},
+      };
+
+      globalThis.fetch = mockFetch(200, responseBody);
+
+      const page = await client.paymentLinks.list();
+      const ids = [];
+      for (const item of page) {
+        ids.push(item.id);
+      }
+      assert.deepStrictEqual(ids, ['pl_1', 'pl_2', 'pl_3']);
+    });
+
+    it('should pass additional filters through to query', async () => {
+      globalThis.fetch = mockFetch(200, {
+        data: { next: null, previous: null, results: [] },
+        meta: {},
+      });
+
+      await client.paymentLinks.list({ limit: 10, status: 'active' });
+
+      const [url] = globalThis.fetch.mock.calls[0].arguments;
+      assert.ok(url.includes('status=active'));
+      assert.ok(url.includes('limit=10'));
     });
   });
 

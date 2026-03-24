@@ -1,5 +1,7 @@
 'use strict';
 
+const PaginatedResponse = require('../pagination');
+
 /**
  * Resource for managing webhook endpoints.
  *
@@ -40,18 +42,25 @@ class WebhookEndpoints {
   }
 
   /**
-   * Lists all webhook endpoints with optional pagination.
+   * Lists webhook endpoints with cursor-based pagination.
    *
    * @param {object} [params] - Query parameters
-   * @param {number} [params.page] - Page number
-   * @param {number} [params.page_size] - Number of items per page
-   * @returns {Promise<object>} Paginated list of webhook endpoints
+   * @param {number} [params.limit] - Number of items per page (1-100, default 20)
+   * @param {string} [params.startingAfter] - Cursor for fetching the next page
+   * @returns {Promise<PaginatedResponse>} Paginated list of webhook endpoints
    *
    * @example
-   * const endpoints = await ezpayments.webhookEndpoints.list();
+   * const page = await client.webhookEndpoints.list({ limit: 10 });
+   * console.log(page.results);
    */
   async list(params = {}) {
-    return this._http.request('GET', this._basePath, { query: params });
+    const { startingAfter, ...rest } = params;
+    const query = { ...rest };
+    if (startingAfter) {
+      query.starting_after = startingAfter;
+    }
+    const response = await this._http.request('GET', this._basePath, { query });
+    return new PaginatedResponse(response.data, response.meta, this._http, this._basePath);
   }
 
   /**

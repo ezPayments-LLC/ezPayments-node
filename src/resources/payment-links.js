@@ -1,5 +1,7 @@
 'use strict';
 
+const PaginatedResponse = require('../pagination');
+
 /**
  * Resource for managing payment links.
  *
@@ -44,20 +46,31 @@ class PaymentLinks {
   }
 
   /**
-   * Lists all payment links with optional filtering and pagination.
+   * Lists payment links with cursor-based pagination and optional filtering.
    *
    * @param {object} [params] - Query parameters
-   * @param {number} [params.page] - Page number
-   * @param {number} [params.page_size] - Number of items per page
+   * @param {number} [params.limit] - Number of items per page (1-100, default 20)
+   * @param {string} [params.startingAfter] - Cursor for fetching the next page
    * @param {string} [params.status] - Filter by status
    * @param {string} [params.ordering] - Field to order results by
-   * @returns {Promise<object>} Paginated list of payment links
+   * @returns {Promise<PaginatedResponse>} Paginated list of payment links
    *
    * @example
-   * const links = await ezpayments.paymentLinks.list({ page: 1, page_size: 10 });
+   * const page = await client.paymentLinks.list({ limit: 10, status: 'active' });
+   * console.log(page.results);
+   *
+   * if (page.hasMore) {
+   *   const nextPage = await page.nextPage();
+   * }
    */
   async list(params = {}) {
-    return this._http.request('GET', this._basePath, { query: params });
+    const { startingAfter, ...rest } = params;
+    const query = { ...rest };
+    if (startingAfter) {
+      query.starting_after = startingAfter;
+    }
+    const response = await this._http.request('GET', this._basePath, { query });
+    return new PaginatedResponse(response.data, response.meta, this._http, this._basePath);
   }
 
   /**
